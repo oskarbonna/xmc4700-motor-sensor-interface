@@ -22,8 +22,6 @@ UART protocol**, and stops autonomously when it detects an obstacle or a drop-of
 
 ## Architecture
 
-The firmware is split into three layers:
-
 | Layer | Responsibility |
 |---|---|
 | **Driver** | Hardware access — PWM, ADC, UART, timers |
@@ -78,12 +76,36 @@ firmware using a constant derived from a nine-point calibration measurement.
 
 ## Repository contents
 
-| File | Description |
+| Module | Description |
 |---|---|
-| `uart2.c` / `.h` | Protocol parser, command execution, response framing |
-| `ir_sensor.c` / `.h` | ADC conversion, distance calculation, threshold logic |
-| `joystick.c` / `.h` | Joystick acquisition, dead zone, out-of-range detection |
-| `motor.c` / `.h` | PWM generation and direction control |
+| `main.c` | Entry point, start-up mode selection, main loop |
+| `platform.h` | Central configuration — speed limits, minimum turning radius, track width, PWM scaling |
+| `uart2.c` / `.h` | Protocol parser, command execution, response framing, communication watchdog |
+| `uart_hal.c` / `.h` | UART hardware abstraction layer |
+| `ir_sensor.c` / `.h` | ADC conversion, distance calculation, obstacle and edge thresholds |
+| `joystick.c` / `.h` | Joystick acquisition, dead zone, out-of-range and cable-break detection |
+| `motor.c` / `.h` | PWM generation and direction control for four drives |
+| `adc.c` / `.h` | ADC driver |
+| `betriebszustandsautomat.c` / `.h` | Operating state machine |
+| `systemsteuerung.c` / `.h` | System supervision |
+| `status_led.c` / `.h` | Status indication |
+
+> **Note on naming:** the project was developed in German, so module and identifier
+> names follow German terminology — `betriebszustandsautomat` is the operating state
+> machine, `systemsteuerung` the system supervision.
+
+---
+
+## What I would do differently
+
+The main loop runs freely, so the sampling interval depends on the current workload
+rather than being fixed. In practice this produced a varying latency between a sensor
+reading and the resulting braking decision.
+
+The next step is a time-triggered design: a periodic timer sets a tick flag and the
+sensor evaluation runs on that fixed interval, while the UART handler stays outside the
+tick so that commands are still answered immediately. From there, moving to an RTOS with
+separate tasks and priorities is a natural continuation.
 
 ---
 
